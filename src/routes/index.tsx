@@ -4,19 +4,32 @@ import { CalendarDays, ChevronRight, Gift, Moon, RefreshCw } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SectionTitle } from "@/components/app/AppShell";
+import { extrasQuery } from "@/lib/extras";
 import { giftNumbers } from "@/lib/gift";
 import { holidayOn, upcomingHolidays } from "@/lib/holidays";
 import type { Slot } from "@/lib/lottery.functions";
 import { liveQuery } from "@/lib/queries";
 import { useSettings } from "@/lib/settings";
-import { formatClock, formatMmDate, formatSlot, getSession, isLiveSession, mmtDateKey, type Session } from "@/lib/time";
+import {
+  formatClock,
+  formatMmDate,
+  formatSlot,
+  getSession,
+  isLiveSession,
+  mmtDateKey,
+  type Session,
+} from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "2D Live — ယနေ့ တိုက်ရိုက် 2D ဂဏန်း | 2D3D Live" },
-      { name: "description", content: "SET နှင့် Value မှ တိုက်ရိုက် 2D ဂဏန်း၊ 12:01 နှင့် 4:30 ထွက်ဂဏန်း၊ Modern / Internet နှင့် လက်ဆောင်ဂဏန်း" },
+      {
+        name: "description",
+        content:
+          "SET နှင့် Value မှ တိုက်ရိုက် 2D ဂဏန်း၊ 12:01 နှင့် 4:30 ထွက်ဂဏန်း၊ Modern / Internet နှင့် လက်ဆောင်ဂဏန်း",
+      },
       { property: "og:title", content: "2D Live — ယနေ့ တိုက်ရိုက် 2D ဂဏန်း" },
       { property: "og:description", content: "SET / Value တိုက်ရိုက်၊ 12:01 နှင့် 4:30 ထွက်ဂဏန်း" },
       { property: "og:type", content: "website" },
@@ -48,7 +61,9 @@ function useNow() {
 
 function beep() {
   try {
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const Ctx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new Ctx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -73,7 +88,11 @@ function LivePage() {
   const session = now ? getSession(now, isHoliday) : "pre";
   const live = isLiveSession(session);
 
-  const { data: resp, isFetching, refetch } = useQuery({
+  const {
+    data: resp,
+    isFetching,
+    refetch,
+  } = useQuery({
     ...liveQuery,
     refetchInterval: settings.autoRefresh ? (live ? 3000 : 60_000) : false,
   });
@@ -82,7 +101,8 @@ function LivePage() {
   const slot = (t: string): Slot | null => data?.results.find((r) => r.time.startsWith(t)) ?? null;
   const isToday = data?.resultDate === today;
   const lastResult = [...(data?.results ?? [])].reverse().find((r) => r.twod)?.twod ?? null;
-  const bigNumber = live && data?.live.twod ? data.live.twod : isToday ? lastResult : live ? null : lastResult;
+  const bigNumber =
+    live && data?.live.twod ? data.live.twod : isToday ? lastResult : live ? null : lastResult;
   const refSlot = slot("16:30")?.twod ? slot("16:30") : slot("12:01");
   const setValue = live ? data?.live.set : refSlot?.set;
   const valueValue = live ? data?.live.value : refSlot?.value;
@@ -96,9 +116,15 @@ function LivePage() {
 
   const gifts = useMemo(() => {
     if (!today) return null;
-    const done = (data?.results ?? []).map((r) => r.twod).filter((v): v is string => !!v).reverse();
+    const done = (data?.results ?? [])
+      .map((r) => r.twod)
+      .filter((v): v is string => !!v)
+      .reverse();
     return giftNumbers(today, done);
   }, [today, data]);
+  const { data: extrasMap } = useQuery(extrasQuery(today ? [today] : []));
+  const extras = today ? extrasMap?.[today] : undefined;
+  const giftGroups = extras?.gift_groups ?? [];
   const nextHoliday = today ? upcomingHolidays(today, 1)[0] : undefined;
 
   return (
@@ -112,7 +138,9 @@ function LivePage() {
             <p className="font-display text-base font-bold leading-none tracking-wide">
               2D3D <span className="text-primary">Live</span>
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{today ? formatMmDate(today) : "\u00a0"}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {today ? formatMmDate(today) : "\u00a0"}
+            </p>
           </div>
         </div>
         <button
@@ -133,12 +161,21 @@ function LivePage() {
             )}
           >
             <span className="relative flex h-2 w-2">
-              {live && <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-live" />}
-              <span className={cn("relative inline-flex h-2 w-2 rounded-full", live ? "bg-live" : "bg-muted-foreground")} />
+              {live && (
+                <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-live" />
+              )}
+              <span
+                className={cn(
+                  "relative inline-flex h-2 w-2 rounded-full",
+                  live ? "bg-live" : "bg-muted-foreground",
+                )}
+              />
             </span>
             {SESSION_LABEL[session]}
           </span>
-          <span className="font-display text-xs tabular text-foreground/70">{now ? formatClock(now) : ""}</span>
+          <span className="font-display text-xs tabular text-foreground/70">
+            {now ? formatClock(now) : ""}
+          </span>
         </div>
 
         <div className="flex flex-col items-center py-4">
@@ -152,9 +189,13 @@ function LivePage() {
             {bigNumber ?? "--"}
           </span>
           {!live && !isToday && data?.resultDate && (
-            <span className="mt-1 text-xs text-foreground/70">နောက်ဆုံးထွက် · {formatMmDate(data.resultDate)}</span>
+            <span className="mt-1 text-xs text-foreground/70">
+              နောက်ဆုံးထွက် · {formatMmDate(data.resultDate)}
+            </span>
           )}
-          {live && data?.live.time && <span className="mt-1 text-xs text-foreground/70">Updated · {data.live.time}</span>}
+          {live && data?.live.time && (
+            <span className="mt-1 text-xs text-foreground/70">Updated · {data.live.time}</span>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -167,12 +208,17 @@ function LivePage() {
       {isHoliday && (
         <div className="mt-3 flex items-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
           <Moon className="h-4 w-4 shrink-0 text-destructive" />
-          <span>ယနေ့ ပိတ်ရက် — {localHoliday?.name ?? data?.holiday.name ?? "ထိုင်းစတော့ ပိတ်ရက်"}</span>
+          <span>
+            ယနေ့ ပိတ်ရက် — {localHoliday?.name ?? data?.holiday.name ?? "ထိုင်းစတော့ ပိတ်ရက်"}
+          </span>
         </div>
       )}
 
       <section className="mt-5">
-        <SectionTitle title="ထွက်ဂဏန်းများ" note={data?.resultDate ? formatMmDate(data.resultDate, false) : undefined} />
+        <SectionTitle
+          title="ထွက်ဂဏန်းများ"
+          note={data?.resultDate ? formatMmDate(data.resultDate, false) : undefined}
+        />
         <div className="grid grid-cols-2 gap-2.5">
           {["12:01", "16:30"].map((t) => (
             <ResultTile key={t} label={formatSlot(t)} slot={slot(t)} highlight />
@@ -195,11 +241,21 @@ function LivePage() {
             <span className="text-center">Modern</span>
             <span className="text-center">Internet</span>
           </div>
-          {["9:30 AM", "2:00 PM"].map((t) => (
-            <div key={t} className="grid grid-cols-3 items-center border-b border-border/40 px-4 py-3 last:border-0">
-              <span className="font-display text-sm font-semibold">{t}</span>
-              <span className="text-center font-display text-2xl font-bold tabular text-primary">--</span>
-              <span className="text-center font-display text-2xl font-bold tabular text-live">--</span>
+          {[
+            { t: "9:30 AM", m: extras?.modern_930, i: extras?.internet_930 },
+            { t: "2:00 PM", m: extras?.modern_200, i: extras?.internet_200 },
+          ].map((row) => (
+            <div
+              key={row.t}
+              className="grid grid-cols-3 items-center border-b border-border/40 px-4 py-3 last:border-0"
+            >
+              <span className="font-display text-sm font-semibold">{row.t}</span>
+              <span className="text-center font-display text-2xl font-bold tabular text-primary">
+                {row.m || "--"}
+              </span>
+              <span className="text-center font-display text-2xl font-bold tabular text-live">
+                {row.i || "--"}
+              </span>
             </div>
           ))}
         </div>
@@ -207,21 +263,48 @@ function LivePage() {
 
       <section className="mt-5">
         <SectionTitle title="ယနေ့ လက်ဆောင်ဂဏန်း" icon={<Gift className="h-4 w-4 text-primary" />} />
-        <div className="rounded-2xl border border-border/60 bg-card-gradient p-4">
-          <div className="grid grid-cols-6 gap-2">
-            {(gifts?.numbers ?? Array.from({ length: 6 }, () => "--")).map((n, i) => (
+        {giftGroups.length > 0 ? (
+          <div className="space-y-2.5">
+            {giftGroups.map((g, gi) => (
               <div
-                key={`${n}-${i}`}
-                className="flex aspect-square items-center justify-center rounded-full border border-primary/40 bg-crimson/30 font-display text-lg font-bold tabular text-primary"
+                key={`${g.title}-${gi}`}
+                className="rounded-2xl border border-border/60 bg-card-gradient p-3.5"
               >
-                {n}
+                {g.title && <p className="mb-2 text-xs font-semibold text-primary">{g.title}</p>}
+                <div className="flex flex-wrap gap-2">
+                  {g.numbers.map((n, i) => (
+                    <span
+                      key={`${n}-${i}`}
+                      className="flex h-11 min-w-11 items-center justify-center rounded-full border border-primary/40 bg-crimson/30 px-2.5 font-display text-lg font-bold tabular text-primary"
+                    >
+                      {n}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            ပါဝါ <span className="font-display font-semibold text-primary">{gifts?.power.join(" · ") ?? "-"}</span> · ဖျော်ဖြေရန်သာ
-          </p>
-        </div>
+        ) : (
+          <div className="rounded-2xl border border-border/60 bg-card-gradient p-4">
+            <div className="grid grid-cols-6 gap-2">
+              {(gifts?.numbers ?? Array.from({ length: 6 }, () => "--")).map((n, i) => (
+                <div
+                  key={`${n}-${i}`}
+                  className="flex aspect-square items-center justify-center rounded-full border border-primary/40 bg-crimson/30 font-display text-lg font-bold tabular text-primary"
+                >
+                  {n}
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              ပါဝါ{" "}
+              <span className="font-display font-semibold text-primary">
+                {gifts?.power.join(" · ") ?? "-"}
+              </span>{" "}
+              · ဖျော်ဖြေရန်သာ
+            </p>
+          </div>
+        )}
       </section>
 
       <Link
@@ -243,7 +326,8 @@ function LivePage() {
       </Link>
 
       <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">
-        ဒေတာများကို ထိုင်းစတော့ (SET) မှ အခမဲ့ရင်းမြစ်များမှ ရယူထားခြင်းဖြစ်ပြီး ပညာပေး/ကိုယ်ပိုင်အသုံးအတွက်သာ ဖြစ်ပါသည်။
+        ဒေတာများကို ထိုင်းစတော့ (SET) မှ အခမဲ့ရင်းမြစ်များမှ ရယူထားခြင်းဖြစ်ပြီး
+        ပညာပေး/ကိုယ်ပိုင်အသုံးအတွက်သာ ဖြစ်ပါသည်။
       </p>
     </div>
   );
@@ -258,7 +342,15 @@ function Stat({ label, value }: { label: string; value?: string | null | undefin
   );
 }
 
-function ResultTile({ label, slot, highlight = false }: { label: string; slot: Slot | null; highlight?: boolean }) {
+function ResultTile({
+  label,
+  slot,
+  highlight = false,
+}: {
+  label: string;
+  slot: Slot | null;
+  highlight?: boolean;
+}) {
   const value = slot?.twod ?? null;
   return (
     <div
@@ -267,7 +359,9 @@ function ResultTile({ label, slot, highlight = false }: { label: string; slot: S
         highlight ? "border-primary/40 bg-card-gradient shadow-glow" : "border-border/60 bg-card",
       )}
     >
-      <span className="font-display text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="font-display text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
       <span
         className={cn(
           "font-display tabular font-bold leading-none",

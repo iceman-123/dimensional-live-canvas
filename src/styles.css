@@ -174,3 +174,11 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee { animation-duration: 60s !important; }
 }
+
+/* Google sign-in button: Google's dark theme colors are required by its branding rules. */
+@utility google-btn {
+  background-color: #131314;
+  border: 1px solid #8e918f;
+  color: #e3e3e3;
+  line-height: 20px;
+}

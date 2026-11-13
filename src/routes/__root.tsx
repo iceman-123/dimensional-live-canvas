@@ -14,6 +14,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/app/AppShell";
 import { SettingsProvider } from "@/lib/settings";
+import { AuthProvider } from "@/hooks/use-auth";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -45,8 +47,12 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">စာမျက်နှာ ဖွင့်၍မရပါ</h1>
-        <p className="mt-2 text-sm text-muted-foreground">တစ်ခုခု မှားယွင်းသွားပါသည်။ ပြန်ကြိုးစားကြည့်ပါ။</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          စာမျက်နှာ ဖွင့်၍မရပါ
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          တစ်ခုခု မှားယွင်းသွားပါသည်။ ပြန်ကြိုးစားကြည့်ပါ။
+        </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -75,7 +81,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "2D3D Live — တိုက်ရိုက် 2D / 3D ထွက်ဂဏန်း" },
-      { name: "description", content: "SET နှင့် Value မှ တိုက်ရိုက် 2D ဂဏန်း၊ ထွက်ဂဏန်းမှတ်တမ်းနှင့် 3D ရလဒ်များ" },
+      {
+        name: "description",
+        content: "SET နှင့် Value မှ တိုက်ရိုက် 2D ဂဏန်း၊ ထွက်ဂဏန်းမှတ်တမ်းနှင့် 3D ရလဒ်များ",
+      },
       { name: "theme-color", content: "#2a1512" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "2D3D Live" },
@@ -120,11 +129,14 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SettingsProvider>
-        <AppShell>
-          <Outlet />
-        </AppShell>
-      </SettingsProvider>
+      <AuthProvider>
+        <SettingsProvider>
+          <AppShell>
+            <Outlet />
+          </AppShell>
+          <Toaster position="top-center" />
+        </SettingsProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
