@@ -28,3 +28,9 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- Live 2D, 2D history and 3D results are fetched only inside server functions in `src/lib/lottery.functions.ts` and normalized there; pages read them via the query options in `src/lib/queries.ts`. Why: keeps external sources swappable and off the browser.
+- All clock/session logic uses Myanmar time (UTC+6:30) via `src/lib/time.ts`. Why: result slots (11:00, 12:01, 15:00, 16:30) are announced in Myanmar time.
+- User display settings live in localStorage via `SettingsProvider` (`src/lib/settings.tsx`). Why: no accounts/backend yet.
