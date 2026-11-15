@@ -95,6 +95,78 @@ export type Database = {
         }
         Relationships: []
       }
+      push_keys: {
+        Row: {
+          created_at: string
+          id: number
+          private_jwk: Json
+          public_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          private_jwk: Json
+          public_key: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          private_jwk?: Json
+          public_key?: string
+        }
+        Relationships: []
+      }
+      push_sent: {
+        Row: {
+          key: string
+          sent_at: string
+        }
+        Insert: {
+          key: string
+          sent_at?: string
+        }
+        Update: {
+          key?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_id: string | null
+          wants_announcements: boolean
+          wants_results: boolean
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_id?: string | null
+          wants_announcements?: boolean
+          wants_results?: boolean
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_id?: string | null
+          wants_announcements?: boolean
+          wants_results?: boolean
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           id: number
