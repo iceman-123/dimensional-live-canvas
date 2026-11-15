@@ -139,6 +139,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_chat_feed: {
+        Args: { _limit?: number }
+        Returns: {
+          author_name: string
+          avatar_url: string
+          body: string
+          created_at: string
+          id: string
+          is_mine: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

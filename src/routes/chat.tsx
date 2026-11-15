@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SendHorizontal, Trash2, Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { GoogleButton } from "@/components/app/GoogleButton";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/chat")({
 
 type Message = {
   id: string;
-  user_id: string;
+  is_mine: boolean;
   author_name: string;
   avatar_url: string | null;
   body: string;
@@ -48,6 +48,18 @@ function ChatPage() {
   const [online, setOnline] = useState(1);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Shared feed comes from a database function that hides account ids;
+  // a data-free "doorbell" broadcast tells open screens to reload it.
+  const load = useCallback(async () => {
+    const { data, error } = await supabase.rpc("get_chat_feed", { _limit: 100 });
+    if (error) {
+      toast.error("မက်ဆေ့ချ်များ ယူ၍မရပါ");
+      return;
+    }
+    setMessages([...(data ?? [])].reverse());
+    setLoaded(true);
+  }, []);
+
   useEffect(() => {
     // Chat is readable only by signed-in users (enforced by database rules).
     if (!userId) {
@@ -55,45 +67,21 @@ function ChatPage() {
       setLoaded(false);
       return;
     }
+    void load();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     let alive = true;
-    supabase
-      .from("chat_messages")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100)
-      .then(({ data, error }) => {
-        if (error) toast.error("မက်ဆေ့ချ်များ ယူ၍မရပါ");
-        if (alive && data) setMessages([...data].reverse());
-        if (alive) setLoaded(true);
-      });
-
-    const channel = supabase
-      .channel(`chat-${Math.random().toString(36).slice(2)}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages" },
-        (payload) => {
-          const m = payload.new as Message;
-          setMessages((prev) =>
-            prev.some((x) => x.id === m.id) ? prev : [...prev.slice(-199), m],
-          );
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "chat_messages" },
-        (payload) => {
-          const id = (payload.old as { id?: string }).id;
-          setMessages((prev) => prev.filter((x) => x.id !== id));
-        },
-      )
-      .subscribe();
-
+    void supabase.realtime.setAuth().then(() => {
+      if (!alive) return;
+      channel = supabase
+        .channel("chat-room", { config: { private: true } })
+        .on("broadcast", { event: "changed" }, () => void load())
+        .subscribe();
+    });
     return () => {
       alive = false;
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, load]);
 
   // Who is online (shared presence room).
   useEffect(() => {
@@ -124,18 +112,14 @@ function ChatPage() {
       return;
     }
     setSending(true);
-    const { data, error } = await supabase
-      .from("chat_messages")
-      .insert({ body, user_id: userId })
-      .select()
-      .single();
+    const { error } = await supabase.from("chat_messages").insert({ body, user_id: userId });
     setSending(false);
     if (error) {
       toast.error("ပို့၍မရပါ။ ပြန်ကြိုးစားပါ။");
       return;
     }
     setText("");
-    if (data) setMessages((prev) => (prev.some((x) => x.id === data.id) ? prev : [...prev, data]));
+    void load();
   };
 
   const remove = async (id: string) => {
@@ -172,7 +156,7 @@ function ChatPage() {
           </p>
         )}
         {messages.map((m) => {
-          const mine = m.user_id === userId;
+          const mine = m.is_mine;
           return (
             <div key={m.id} className={cn("group flex gap-2", mine && "flex-row-reverse")}>
               <Avatar name={m.author_name} url={m.avatar_url} />

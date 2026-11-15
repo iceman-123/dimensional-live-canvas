@@ -15,6 +15,13 @@
       "when": 1794726769450,
       "tag": "0001_chat_signed_in_read",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794727804482,
+      "tag": "0002_chat_feed_without_user_ids",
+      "breakpoints": true
     }
   ]
 }
