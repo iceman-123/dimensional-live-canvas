@@ -17,7 +17,7 @@ describe("web push encryption", () => {
   it("matches the RFC 8291 example message", async () => {
     const asPublicRaw = b64urlDecode(AS_PUBLIC);
     const out = await encryptPayload(
-      new TextEncoder().encode("When I grow up, I want to be a watermelon"),
+      new Uint8Array(new TextEncoder().encode("When I grow up, I want to be a watermelon")),
       UA_PUBLIC,
       AUTH,
       {

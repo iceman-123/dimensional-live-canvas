@@ -2,6 +2,13 @@
 // so it runs on the edge worker runtime. Server-only.
 
 const enc = new TextEncoder();
+type Bytes = Uint8Array<ArrayBuffer>;
+const utf8 = (t: string): Bytes => new Uint8Array(enc.encode(t));
+
+function stripOps(jwk: JsonWebKey): JsonWebKey {
+  const { key_ops: _ops, ...rest } = jwk;
+  return rest;
+}
 
 export function b64urlEncode(bytes: ArrayBuffer | Uint8Array): string {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -10,7 +17,7 @@ export function b64urlEncode(bytes: ArrayBuffer | Uint8Array): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export function b64urlDecode(str: string): Uint8Array {
+export function b64urlDecode(str: string): Bytes {
   const s = str.replace(/-/g, "+").replace(/_/g, "/");
   const bin = atob(s + "=".repeat((4 - (s.length % 4)) % 4));
   const out = new Uint8Array(bin.length);
@@ -18,7 +25,7 @@ export function b64urlDecode(str: string): Uint8Array {
   return out;
 }
 
-function concat(...parts: Uint8Array[]): Uint8Array {
+function concat(...parts: Uint8Array[]): Bytes {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let o = 0;
   for (const p of parts) {
@@ -28,7 +35,7 @@ function concat(...parts: Uint8Array[]): Uint8Array {
   return out;
 }
 
-async function hmac(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+async function hmac(key: Bytes, data: Bytes): Promise<Bytes> {
   const k = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, [
     "sign",
   ]);
@@ -59,25 +66,25 @@ export async function generateVapidKeys(): Promise<{ publicKey: string; privateJ
 
 /** RFC 8291 payload encryption. `testing` lets tests pin the sender key and salt. */
 export async function encryptPayload(
-  payload: Uint8Array,
+  payload: Bytes,
   uaPublicB64: string,
   authSecretB64: string,
   testing?: { asPrivateJwk: JsonWebKey; asPublicRaw: Uint8Array; salt: Uint8Array },
-): Promise<Uint8Array> {
+): Promise<Bytes> {
   const uaPublic = b64urlDecode(uaPublicB64);
   const authSecret = b64urlDecode(authSecretB64);
 
   let asPrivate: CryptoKey;
-  let asPublic: Uint8Array;
+  let asPublic: Bytes;
   if (testing) {
     asPrivate = await crypto.subtle.importKey(
       "jwk",
-      { ...testing.asPrivateJwk, key_ops: undefined } as JsonWebKey,
+      stripOps(testing.asPrivateJwk),
       { name: "ECDH", namedCurve: "P-256" },
       false,
       ["deriveBits"],
     );
-    asPublic = testing.asPublicRaw;
+    asPublic = new Uint8Array(testing.asPublicRaw);
   } else {
     const kp = (await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, [
       "deriveBits",
@@ -85,7 +92,9 @@ export async function encryptPayload(
     asPrivate = kp.privateKey;
     asPublic = new Uint8Array((await crypto.subtle.exportKey("raw", kp.publicKey)) as ArrayBuffer);
   }
-  const salt = testing?.salt ?? crypto.getRandomValues(new Uint8Array(16));
+  const salt: Bytes = testing
+    ? new Uint8Array(testing.salt)
+    : crypto.getRandomValues(new Uint8Array(16));
 
   const uaKey = await crypto.subtle.importKey(
     "raw",
@@ -99,11 +108,15 @@ export async function encryptPayload(
   );
 
   const prkKey = await hmac(authSecret, ecdhSecret);
-  const keyInfo = concat(enc.encode("WebPush: info\0"), uaPublic, asPublic, new Uint8Array([1]));
+  const keyInfo = concat(utf8("WebPush: info\0"), uaPublic, asPublic, new Uint8Array([1]));
   const ikm = await hmac(prkKey, keyInfo);
   const prk = await hmac(salt, ikm);
-  const cek = (await hmac(prk, concat(enc.encode("Content-Encoding: aes128gcm\0"), new Uint8Array([1])))).slice(0, 16);
-  const nonce = (await hmac(prk, concat(enc.encode("Content-Encoding: nonce\0"), new Uint8Array([1])))).slice(0, 12);
+  const cek = (
+    await hmac(prk, concat(utf8("Content-Encoding: aes128gcm\0"), new Uint8Array([1])))
+  ).slice(0, 16);
+  const nonce = (
+    await hmac(prk, concat(utf8("Content-Encoding: nonce\0"), new Uint8Array([1])))
+  ).slice(0, 12);
 
   const aesKey = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
   const cipher = new Uint8Array(
@@ -121,16 +134,24 @@ export async function encryptPayload(
   return concat(header, asPublic, cipher);
 }
 
-async function vapidJwt(audience: string, subject: string, privateJwk: JsonWebKey): Promise<string> {
-  const head = b64urlEncode(enc.encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
+async function vapidJwt(
+  audience: string,
+  subject: string,
+  privateJwk: JsonWebKey,
+): Promise<string> {
+  const head = b64urlEncode(utf8(JSON.stringify({ typ: "JWT", alg: "ES256" })));
   const body = b64urlEncode(
-    enc.encode(
-      JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: subject }),
+    utf8(
+      JSON.stringify({
+        aud: audience,
+        exp: Math.floor(Date.now() / 1000) + 12 * 3600,
+        sub: subject,
+      }),
     ),
   );
   const key = await crypto.subtle.importKey(
     "jwk",
-    { ...privateJwk, key_ops: undefined } as JsonWebKey,
+    stripOps(privateJwk),
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"],
@@ -138,7 +159,7 @@ async function vapidJwt(audience: string, subject: string, privateJwk: JsonWebKe
   const sig = await crypto.subtle.sign(
     { name: "ECDSA", hash: "SHA-256" },
     key,
-    enc.encode(`${head}.${body}`),
+    utf8(`${head}.${body}`),
   );
   return `${head}.${body}.${b64urlEncode(sig)}`;
 }
@@ -153,7 +174,7 @@ export async function sendWebPush(
   vapid: VapidKeys,
   opts: { ttl?: number; urgency?: "low" | "normal" | "high"; topic?: string } = {},
 ): Promise<number> {
-  const body = await encryptPayload(enc.encode(JSON.stringify(data)), target.p256dh, target.auth);
+  const body = await encryptPayload(utf8(JSON.stringify(data)), target.p256dh, target.auth);
   const jwt = await vapidJwt(new URL(target.endpoint).origin, vapid.subject, vapid.privateJwk);
   const headers: Record<string, string> = {
     "Content-Encoding": "aes128gcm",
@@ -162,7 +183,7 @@ export async function sendWebPush(
     Urgency: opts.urgency ?? "high",
     Authorization: `vapid t=${jwt}, k=${vapid.publicKey}`,
   };
-  if (opts.topic) headers.Topic = opts.topic;
+  if (opts.topic) headers["Topic"] = opts.topic;
   const res = await fetch(target.endpoint, { method: "POST", headers, body });
   return res.status;
 }
