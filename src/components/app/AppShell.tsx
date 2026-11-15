@@ -1,7 +1,8 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { History, Megaphone, MessagesSquare, Radio, Settings, Ticket } from "lucide-react";
 import type { ReactNode } from "react";
+import { LiveMini } from "@/components/app/LiveMini";
 import { siteSettingsQuery } from "@/lib/extras";
 import { cn } from "@/lib/utils";
 
@@ -19,23 +20,29 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: site } = useQuery(siteSettingsQuery);
   const MARQUEE = site?.ticker_text?.trim() || DEFAULT_MARQUEE;
   const showTicker = site?.ticker_enabled ?? true;
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isChat = pathname === "/chat";
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md">
-        {showTicker && (
-          <div className="sticky top-0 z-30 flex items-center gap-2 overflow-hidden border-b border-crimson/40 bg-surface/95 px-3 py-1.5 backdrop-blur">
-            <Megaphone className="h-4 w-4 shrink-0 text-primary" />
-            <div className="relative flex-1 overflow-hidden">
-              <div className="animate-marquee flex w-max whitespace-nowrap text-xs text-foreground/90">
-                <span className="pr-16">{MARQUEE}</span>
-                <span className="pr-16" aria-hidden>
-                  {MARQUEE}
-                </span>
+      <div className={cn("mx-auto", isChat ? "max-w-2xl" : "max-w-md")}>
+        {isChat ? (
+          <LiveMini />
+        ) : (
+          showTicker && (
+            <div className="sticky top-0 z-30 flex items-center gap-2 overflow-hidden border-b border-crimson/40 bg-surface/95 px-3 py-1.5 backdrop-blur">
+              <Megaphone className="h-4 w-4 shrink-0 text-primary" />
+              <div className="relative flex-1 overflow-hidden">
+                <div className="animate-marquee flex w-max whitespace-nowrap text-xs text-foreground/90">
+                  <span className="pr-16">{MARQUEE}</span>
+                  <span className="pr-16" aria-hidden>
+                    {MARQUEE}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
-        <main className="px-4 pb-28">{children}</main>
+        <main className={cn("pb-28", isChat ? "px-2" : "px-4")}>{children}</main>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-surface/95 backdrop-blur">
         <div className="mx-auto grid max-w-md grid-cols-5 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2">
@@ -72,13 +79,20 @@ export function PageHeader({
   title,
   subtitle,
   action,
+  className,
 }: {
   title: string;
   subtitle?: string | undefined;
   action?: ReactNode;
+  className?: string;
 }) {
   return (
-    <header className="-mx-4 mb-4 flex items-start justify-between gap-3 border-b border-border/50 px-4 pb-3 pt-3">
+    <header
+      className={cn(
+        "-mx-4 mb-4 flex items-start justify-between gap-3 border-b border-border/50 px-4 pb-3 pt-3",
+        className,
+      )}
+    >
       <div>
         <h1 className="text-lg font-bold leading-tight">{title}</h1>
         {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
