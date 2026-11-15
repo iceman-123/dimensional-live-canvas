@@ -49,6 +49,12 @@ function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Chat is readable only by signed-in users (enforced by database rules).
+    if (!userId) {
+      setMessages([]);
+      setLoaded(false);
+      return;
+    }
     let alive = true;
     supabase
       .from("chat_messages")
@@ -87,7 +93,7 @@ function ChatPage() {
       alive = false;
       void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId]);
 
   // Who is online (shared presence room).
   useEffect(() => {
@@ -154,6 +160,11 @@ function ChatPage() {
       />
 
       <div className="flex-1 space-y-3 pb-4">
+        {ready && !userId && (
+          <p className="py-16 text-center text-sm text-muted-foreground">
+            မက်ဆေ့ချ်များ ဖတ်ရန် Google ဖြင့် ဝင်ပါ။
+          </p>
+        )}
         {loaded && messages.length === 0 && (
           <p className="py-16 text-center text-sm text-muted-foreground">
             မက်ဆေ့ချ် မရှိသေးပါ။ ပထမဆုံး စကားပြောလိုက်ပါ။
