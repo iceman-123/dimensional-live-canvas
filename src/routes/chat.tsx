@@ -83,9 +83,10 @@ function ChatPage() {
     };
   }, [userId, load]);
 
-  // Who is online (shared presence room).
+  // Who is online (shared presence room). Use a random per-screen key so
+  // account ids are never shared with other people in the room.
   useEffect(() => {
-    const key = userId ?? `guest-${Math.random().toString(36).slice(2)}`;
+    const key = `v-${Math.random().toString(36).slice(2)}`;
     const room = supabase.channel("chat-presence", { config: { presence: { key } } });
     room
       .on("presence", { event: "sync" }, () =>
@@ -97,7 +98,7 @@ function ChatPage() {
     return () => {
       void supabase.removeChannel(room);
     };
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
